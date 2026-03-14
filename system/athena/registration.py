@@ -7,7 +7,7 @@ import string
 from pathlib import Path
 from typing import cast
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from openpilot.common.api import api_get
 from openpilot.common.params import Params
 from openpilot.common.spinner import Spinner
@@ -20,8 +20,8 @@ UNREGISTERED_DONGLE_ID = "UnregisteredDevice"
 
 
 def is_registered_device() -> bool:
-  dongle = Params().get("DongleId", encoding='utf-8')
-  return dongle not in (None, UNREGISTERED_DONGLE_ID)
+    dongle = Params().get("DongleId", encoding="utf-8")
+    return dongle not in (None, UNREGISTERED_DONGLE_ID)
 
 
 def register(show_spinner=False, register_konik=False) -> str | None:
