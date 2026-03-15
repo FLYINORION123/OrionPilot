@@ -115,6 +115,7 @@ class CarState(CarStateBase):
   def update(self, cp, cp_cam, cp_body, frogpilot_toggles):
     ret = car.CarState.new_message()
     fp_ret = custom.FrogPilotCarState.new_message()
+    fp_ret.dashboardSpeedLimit = 0.0
 
     # car params
     v_weight_v = [0., 1.]  # don't trust smooth speed at low values to avoid premature zero snapping
@@ -228,6 +229,14 @@ class CarState(CarStateBase):
     else:
       ret.cruiseState.speed = cp.vl["CRUISE"]["CRUISE_SPEED_PCM"] * CV.KPH_TO_MS
 
+    if self.CP.carFingerprint in HONDA_BOSCH_RADARLESS:
+      try:
+        speed_limit_raw = cp_cam.vl["CAMERA_MESSAGES"]["SPEED_LIMIT_SIGN"] % 32
+        if 1 <= speed_limit_raw <= 17:
+          fp_ret.dashboardSpeedLimit = speed_limit_raw * 5.0 * CV.MPH_TO_MS
+      except (KeyError, ValueError):
+        pass
+
     if self.CP.flags & HondaFlags.BOSCH_ALT_BRAKE:
       ret.brakePressed = cp.vl["BRAKE_MODULE"]["BRAKE_PRESSED"] != 0
     else:
@@ -304,6 +313,7 @@ class CarState(CarStateBase):
       messages += [
         ("ACC_HUD", 10),
         ("LKAS_HUD", 10),
+        ("CAMERA_MESSAGES", 10),
       ]
 
     elif CP.carFingerprint not in HONDA_BOSCH:
