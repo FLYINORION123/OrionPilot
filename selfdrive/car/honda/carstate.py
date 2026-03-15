@@ -313,7 +313,7 @@ class CarState(CarStateBase):
       messages += [
         ("ACC_HUD", 10),
         ("LKAS_HUD", 10),
-        ("CAMERA_MESSAGES", 10)
+        ("CAMERA_MESSAGES", 10),
       ]
 
     elif CP.carFingerprint not in HONDA_BOSCH:
