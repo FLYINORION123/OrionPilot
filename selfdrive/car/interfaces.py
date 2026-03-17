@@ -17,7 +17,7 @@ from openpilot.common.realtime import DT_CTRL
 from openpilot.selfdrive.car import apply_hysteresis, gen_empty_fingerprint, scale_rot_inertia, scale_tire_stiffness, STD_CARGO_KG
 from openpilot.selfdrive.car.chrysler.values import CAR as ChryslerCAR, ChryslerFrogPilotFlags
 from openpilot.selfdrive.car.gm.values import CAR as GMCAR
-from openpilot.selfdrive.car.honda.values import CAR as HondaCAR, HONDA_BOSCH
+from openpilot.selfdrive.car.honda.values import CAR as HondaCAR, HONDA_BOSCH, HondaFrogPilotFlags
 from openpilot.selfdrive.car.hyundai.hyundaicanfd import CanBus
 from openpilot.selfdrive.car.hyundai.values import CAR as HyundaiCAR, CANFD_CAR, HyundaiFrogPilotFlags
 from openpilot.selfdrive.car.mock.values import CAR as MockCAR
@@ -189,6 +189,9 @@ class CarInterfaceBase(ABC):
 
         fp_ret.canUsePedal = candidate not in HONDA_BOSCH
 
+        if candidate in [HondaCAR.HONDA_CIVIC_2022, HondaCAR.HONDA_HRV_3G, HondaCAR.HONDA_ACCORD, HondaCAR.HONDA_CRV_HYBRID, HondaCAR.HONDA_CIVIC_BOSCH, HondaCAR.HONDA_CRV_5G, HondaCAR.HONDA_INSIGHT]:
+          fp_ret.fpFlags |= HondaFrogPilotFlags.HAS_CAMERA_MESSAGES.value
+        
       elif platform in HyundaiCAR:
         if candidate in CANFD_CAR:
           hda2 = Ecu.adas in [fw.ecu for fw in car_fw]

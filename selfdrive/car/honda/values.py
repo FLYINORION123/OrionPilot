@@ -62,6 +62,10 @@ class HondaFlags(IntFlag):
   NIDEC_ALT_SCM_MESSAGES = 64
 
 
+class HondaFrogPilotFlags(IntFlag):
+  HAS_CAMERA_MESSAGES = 8
+
+
 # Car button codes
 class CruiseButtons:
   RES_ACCEL = 4

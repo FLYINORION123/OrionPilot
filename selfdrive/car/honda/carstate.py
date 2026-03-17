@@ -8,13 +8,13 @@ from opendbc.can.parser import CANParser
 from openpilot.selfdrive.car.honda.hondacan import CanBus, get_cruise_speed_conversion
 from openpilot.selfdrive.car.honda.values import CAR, DBC, STEER_THRESHOLD, HONDA_BOSCH, \
                                                  HONDA_NIDEC_ALT_SCM_MESSAGES, HONDA_BOSCH_RADARLESS, \
-                                                 HondaFlags
+                                                 HondaFlags, HondaFrogPilotFlags
 from openpilot.selfdrive.car.interfaces import CarStateBase
 
 TransmissionType = car.CarParams.TransmissionType
 
 
-def get_can_messages(CP, gearbox_msg):
+def get_can_messages(CP, gearbox_msg, FPCP):
   messages = [
     ("ENGINE_DATA", 100),
     ("WHEEL_SPEEDS", 50),
@@ -57,6 +57,9 @@ def get_can_messages(CP, gearbox_msg):
         ("ACC_HUD", 10),
         ("ACC_CONTROL", 50),
       ]
+    if FPCP.fpFlags & HondaFrogPilotFlags.HAS_CAMERA_MESSAGES:
+        if CP.carFingerprint in (HONDA_BOSCH - HONDA_BOSCH_RADARLESS):
+          messages.append(("CAMERA_MESSAGES", 10))
   else:  # Nidec signals
     if CP.carFingerprint == CAR.HONDA_ODYSSEY_CHN:
       messages.append(("CRUISE_PARAMS", 10))
@@ -84,6 +87,18 @@ def get_can_messages(CP, gearbox_msg):
     messages.append(("STANDSTILL", 50))
 
   return messages
+
+
+# Dashboard Speed Limit / Traffic Sign Recognition (TSR) - Credit to MVL-Boston
+def get_dashboard_speed_limit(CP, FPCP, cp, cp_cam):
+  if not (FPCP.fpFlags & HondaFrogPilotFlags.HAS_CAMERA_MESSAGES):
+    return 0.0
+  speed_bus = cp if (CP.carFingerprint in (HONDA_BOSCH - HONDA_BOSCH_RADARLESS)) else cp_cam
+  try:
+    speed_limit_raw = speed_bus.vl["CAMERA_MESSAGES"]["SPEED_LIMIT_SIGN"] % 32
+    return speed_limit_raw * 5.0 * CV.MPH_TO_MS if 1 <= speed_limit_raw <= 17 else 0.0
+  except (KeyError, ValueError):
+    return 0.0
 
 
 class CarState(CarStateBase):
@@ -228,6 +243,9 @@ class CarState(CarStateBase):
     else:
       ret.cruiseState.speed = cp.vl["CRUISE"]["CRUISE_SPEED_PCM"] * CV.KPH_TO_MS
 
+    if self.FPCP.fpFlags & HondaFrogPilotFlags.HAS_CAMERA_MESSAGES:
+      fp_ret.dashboardSpeedLimit = get_dashboard_speed_limit(self.CP, self.FPCP, cp, cp_cam)
+
     if self.CP.flags & HondaFlags.BOSCH_ALT_BRAKE:
       ret.brakePressed = cp.vl["BRAKE_MODULE"]["BRAKE_PRESSED"] != 0
     else:
@@ -291,7 +309,7 @@ class CarState(CarStateBase):
     return ret, fp_ret
 
   def get_can_parser(self, CP, FPCP):
-    messages = get_can_messages(CP, self.gearbox_msg)
+    messages = get_can_messages(CP, self.gearbox_msg, FPCP)
     return CANParser(DBC[CP.carFingerprint]["pt"], messages, CanBus(CP).pt)
 
   @staticmethod
@@ -306,7 +324,11 @@ class CarState(CarStateBase):
         ("LKAS_HUD", 10),
       ]
 
-    elif CP.carFingerprint not in HONDA_BOSCH:
+    if FPCP.fpFlags & HondaFrogPilotFlags.HAS_CAMERA_MESSAGES:
+      if CP.carFingerprint not in (HONDA_BOSCH - HONDA_BOSCH_RADARLESS):
+        messages.append(("CAMERA_MESSAGES", 10))
+    
+    if CP.carFingerprint not in HONDA_BOSCH:
       messages += [
         ("ACC_HUD", 10),
         ("LKAS_HUD", 10),
